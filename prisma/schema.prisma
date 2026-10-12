@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  type      String     @default("FOOD") // "FOOD" or "DRINK"
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  menuItems MenuItem[]
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  imageUrl    String
+  ingredients String   // comma-separated or JSON list of ingredients
+  available   Boolean  @default(true)
+  featured    Boolean  @default(false)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

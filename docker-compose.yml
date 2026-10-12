@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lebordeaux_menu
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/prisma/prod.db
+      - JWT_SECRET=change_this_to_a_secure_jwt_secret_in_production_2026
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    volumes:
+      # Persist SQLite database and user uploads across container restarts
+      - db_data:/app/prisma
+      - uploads_data:/app/public/uploads
+
+volumes:
+  db_data:
+  uploads_data:
