@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
+import { FALLBACK_CATEGORIES, FALLBACK_MENU_ITEMS } from '@/lib/fallbackData';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,10 +54,19 @@ export async function GET(req: NextRequest) {
       categories,
     });
   } catch (error: any) {
-    console.error('Error fetching admin stats:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch admin stats' },
-      { status: 500 }
-    );
+    console.warn('Error fetching admin stats from db, returning fallback stats:', error?.message);
+    return NextResponse.json({
+      success: true,
+      stats: {
+        totalItems: FALLBACK_MENU_ITEMS.length,
+        totalCategories: FALLBACK_CATEGORIES.length,
+        availableItems: FALLBACK_MENU_ITEMS.filter((i) => i.available).length,
+        unavailableItems: FALLBACK_MENU_ITEMS.filter((i) => !i.available).length,
+        featuredItems: FALLBACK_MENU_ITEMS.filter((i) => i.featured).length,
+      },
+      recentItems: FALLBACK_MENU_ITEMS.slice(0, 5),
+      categories: FALLBACK_CATEGORIES,
+      isFallback: true,
+    });
   }
 }

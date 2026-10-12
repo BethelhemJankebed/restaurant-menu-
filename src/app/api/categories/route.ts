@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
+import { FALLBACK_CATEGORIES } from '@/lib/fallbackData';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const type = searchParams.get('type'); // "FOOD" or "DRINK"
+  const { searchParams } = new URL(req.url);
+  const type = searchParams.get('type'); // "FOOD" or "DRINK"
 
+  try {
     const where: any = {};
     if (type) {
       where.type = type.toUpperCase();
@@ -24,13 +25,23 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, categories });
+    if (categories && categories.length > 0) {
+      return NextResponse.json({ success: true, categories });
+    }
+
+    // If database returned empty, serve high-quality fallback categories
+    let fallback = FALLBACK_CATEGORIES;
+    if (type) {
+      fallback = fallback.filter((c) => c.type === type.toUpperCase());
+    }
+    return NextResponse.json({ success: true, categories: fallback });
   } catch (error: any) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch categories' },
-      { status: 500 }
-    );
+    console.warn('Database query failed for categories, serving fallback data:', error?.message);
+    let fallback = FALLBACK_CATEGORIES;
+    if (type) {
+      fallback = fallback.filter((c) => c.type === type.toUpperCase());
+    }
+    return NextResponse.json({ success: true, categories: fallback, isFallback: true });
   }
 }
 

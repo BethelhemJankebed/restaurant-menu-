@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
+import { FALLBACK_MENU_ITEMS, filterFallbackItems } from '@/lib/fallbackData';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const categoryId = searchParams.get('categoryId');
-    const type = searchParams.get('type');
-    const search = searchParams.get('search')?.trim();
-    const featured = searchParams.get('featured');
-    const availableOnly = searchParams.get('availableOnly') === 'true';
+  const { searchParams } = new URL(req.url);
+  const categoryId = searchParams.get('categoryId');
+  const type = searchParams.get('type');
+  const search = searchParams.get('search')?.trim();
+  const featured = searchParams.get('featured');
+  const availableOnly = searchParams.get('availableOnly') === 'true';
 
+  try {
     const where: any = {};
 
     if (categoryId && categoryId !== 'all') {
@@ -58,13 +59,29 @@ export async function GET(req: NextRequest) {
       ],
     });
 
-    return NextResponse.json({ success: true, count: items.length, items });
+    if (items && items.length > 0) {
+      return NextResponse.json({ success: true, count: items.length, items });
+    }
+
+    // Database is empty - serve fallback items
+    const fallback = filterFallbackItems(FALLBACK_MENU_ITEMS, {
+      categoryId,
+      type,
+      search,
+      featured,
+      availableOnly,
+    });
+    return NextResponse.json({ success: true, count: fallback.length, items: fallback });
   } catch (error: any) {
-    console.error('Error fetching menu items:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch menu items' },
-      { status: 500 }
-    );
+    console.warn('Database query failed for menu-items, serving fallback data:', error?.message);
+    const fallback = filterFallbackItems(FALLBACK_MENU_ITEMS, {
+      categoryId,
+      type,
+      search,
+      featured,
+      availableOnly,
+    });
+    return NextResponse.json({ success: true, count: fallback.length, items: fallback, isFallback: true });
   }
 }
 

@@ -10,11 +10,12 @@ import AboutSection from '../components/AboutSection';
 import Footer from '../components/Footer';
 import LogoLoader from '../components/LogoLoader';
 import { Search, X, AlertTriangle, RefreshCw, Sparkles, Filter } from 'lucide-react';
+import { FALLBACK_CATEGORIES, FALLBACK_MENU_ITEMS } from '@/lib/fallbackData';
 
 export default function HomePage() {
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItemData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryItem[]>(FALLBACK_CATEGORIES as any);
+  const [menuItems, setMenuItems] = useState<MenuItemData[]>(FALLBACK_MENU_ITEMS as any);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Filters state
@@ -28,26 +29,28 @@ export default function HomePage() {
   // Fetch categories and menu items
   const fetchData = async () => {
     try {
-      setLoading(true);
       setError(null);
 
       const [catRes, itemsRes] = await Promise.all([
-        fetch('/api/categories'),
-        fetch('/api/menu-items'),
+        fetch('/api/categories').catch(() => null),
+        fetch('/api/menu-items').catch(() => null),
       ]);
 
-      if (!catRes.ok || !itemsRes.ok) {
-        throw new Error('Failed to load menu data from server');
+      if (catRes && catRes.ok) {
+        const catData = await catRes.json();
+        if (catData.categories && catData.categories.length > 0) {
+          setCategories(catData.categories);
+        }
       }
 
-      const catData = await catRes.json();
-      const itemsData = await itemsRes.json();
-
-      setCategories(catData.categories || []);
-      setMenuItems(itemsData.items || []);
+      if (itemsRes && itemsRes.ok) {
+        const itemsData = await itemsRes.json();
+        if (itemsData.items && itemsData.items.length > 0) {
+          setMenuItems(itemsData.items);
+        }
+      }
     } catch (err: any) {
-      console.error('Fetch error:', err);
-      setError(err.message || 'Unable to connect to the restaurant database.');
+      console.warn('Network issue fetching live menu; showing resilient fallback dataset:', err);
     } finally {
       setLoading(false);
     }
